@@ -14,6 +14,7 @@ COMMON_SRCS := \
 	src/utils.c
 PUSH_SRCS := src/push_swap.c src/sort.c
 CHECKER_SRCS := src/checker.c src/checker_reader.c
+OPERATION_TEST := $(OBJ_DIR)/operation_invariants
 
 COMMON_OBJS := $(COMMON_SRCS:src/%.c=$(OBJ_DIR)/%.o)
 PUSH_OBJS := $(PUSH_SRCS:src/%.c=$(OBJ_DIR)/%.o)
@@ -33,6 +34,10 @@ $(CHECKER): $(COMMON_OBJS) $(CHECKER_OBJS)
 $(OBJ_DIR)/%.o: src/%.c include/push_swap.h | $(OBJ_DIR)
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
+$(OPERATION_TEST): tests/operation_invariants.c \
+		$(OBJ_DIR)/stack.o $(OBJ_DIR)/operations.o $(OBJ_DIR)/utils.o
+	$(CC) $(CFLAGS) $(CPPFLAGS) $^ -o $@
+
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
 
@@ -44,5 +49,6 @@ fclean: clean
 
 re: fclean all
 
-test: all
+test: all $(OPERATION_TEST)
+	$(OPERATION_TEST)
 	python3 tests/run_tests.py
