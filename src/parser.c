@@ -6,10 +6,10 @@ static int	is_space(char c)
 		|| c == '\r' || c == '\v' || c == '\f');
 }
 
-static int	count_tokens_in_arg(const char *arg)
+static size_t	count_tokens_in_arg(const char *arg)
 {
-	int	count;
-	int	i;
+	size_t	count;
+	size_t	i;
 
 	count = 0;
 	i = 0;
@@ -19,6 +19,8 @@ static int	count_tokens_in_arg(const char *arg)
 			i++;
 		if (arg[i] == '\0')
 			break ;
+		if (count == (size_t)INT_MAX)
+			return ((size_t)INT_MAX + 1);
 		count++;
 		while (arg[i] != '\0' && !is_space(arg[i]))
 			i++;
@@ -26,27 +28,32 @@ static int	count_tokens_in_arg(const char *arg)
 	return (count);
 }
 
-static int	count_all_tokens(int argc, char **argv)
+static int	count_all_tokens(int argc, char **argv, int *result)
 {
-	int	count;
+	size_t	count;
 	int	i;
+	size_t	argument_count;
 
 	count = 0;
 	i = 1;
 	while (i < argc)
 	{
-		count += count_tokens_in_arg(argv[i]);
+		argument_count = count_tokens_in_arg(argv[i]);
+		if (argument_count > (size_t)INT_MAX - count)
+			return (0);
+		count += argument_count;
 		i++;
 	}
-	return (count);
+	*result = (int)count;
+	return (1);
 }
 
-static int	parse_token(const char *arg, int start, int end, int *out)
+static int	parse_token(const char *arg, size_t start, size_t end, int *out)
 {
 	long long	value;
 	long long	limit;
 	int			sign;
-	int			i;
+	size_t		i;
 
 	value = 0;
 	sign = 1;
@@ -79,8 +86,8 @@ static int	fill_values(int argc, char **argv, t_stack *a)
 {
 	int	i;
 	int	pos;
-	int	start;
-	int	end;
+	size_t	start;
+	size_t	end;
 	int	value;
 
 	i = 1;
@@ -142,7 +149,7 @@ static int	assign_ranks(t_stack *a)
 	int	*sorted;
 	int	i;
 
-	sorted = (int *)malloc(sizeof(int) * (size_t)a->size);
+	sorted = (int *)ps_malloc(sizeof(int) * (size_t)a->size);
 	if (sorted == NULL)
 		return (0);
 	i = 0;
@@ -157,7 +164,7 @@ static int	assign_ranks(t_stack *a)
 	{
 		if (sorted[i - 1] == sorted[i])
 		{
-			free(sorted);
+			ps_free(sorted);
 			return (0);
 		}
 		i++;
@@ -168,7 +175,7 @@ static int	assign_ranks(t_stack *a)
 		a->ranks[i] = find_rank(sorted, a->size, a->values[i]);
 		i++;
 	}
-	free(sorted);
+	ps_free(sorted);
 	return (1);
 }
 
@@ -179,7 +186,8 @@ int	parse_input(int argc, char **argv, t_stack *a)
 	stack_init_empty(a);
 	if (argc == 1)
 		return (1);
-	count = count_all_tokens(argc, argv);
+	if (!count_all_tokens(argc, argv, &count))
+		return (0);
 	if (count == 0)
 		return (0);
 	if (!stack_init(a, count))
